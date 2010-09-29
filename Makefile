@@ -26,7 +26,7 @@ less:
 	@@cat ${HEADER} | sed s/@VERSION/${VERSION}/ > ${DIST}
 	@@echo "(function (window, undefined) {" >> ${DIST}
 	@@cat build/require.js\
-	      build/ecma-5.js\
+	      ${SRC}/ecma-5.js\
 	      ${SRC}/parser.js\
 	      ${SRC}/functions.js\
 	      ${SRC}/tree/*.js\

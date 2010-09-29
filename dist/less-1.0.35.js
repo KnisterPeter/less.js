@@ -21,118 +21,108 @@ function require(arg) {
 // dantman Daniel Friesen
 
 //
+// Namespace
+//
+Ecma5 = {};
+
+//
 // Array
 //
-if (!Array.isArray) {
-    Array.isArray = function(obj) {
-        return Object.prototype.toString.call(obj) === "[object Array]" ||
-               (obj instanceof Array);
-    };
-}
-if (!Array.prototype.forEach) {
-    Array.prototype.forEach =  function(block, thisObject) {
-        var len = this.length >>> 0;
-        for (var i = 0; i < len; i++) {
-            if (i in this) {
-                block.call(thisObject, this[i], i, this);
+Ecma5.isArray = function(obj) {
+    return Object.prototype.toString.call(obj) === "[object Array]" ||
+           (obj instanceof Array);
+};
+Ecma5.forEach =  function(array, block, thisObject) {
+    var len = array.length >>> 0;
+    for (var i = 0; i < len; i++) {
+        if (i in array) {
+            block.call(thisObject, array[i], i, array);
+        }
+    }
+};
+Ecma5.map = function(array, fun /*, thisp*/) {
+    var len = array.length >>> 0;
+    var res = new Array(len);
+    var thisp = arguments[2];
+
+    for (var i = 0; i < len; i++) {
+        if (i in array) {
+            res[i] = fun.call(thisp, array[i], i, array);
+        }
+    }
+    return res;
+};
+Ecma5.filter = function(array, block /*, thisp */) {
+    var values = [];
+    var thisp = arguments[2];
+    for (var i = 0; i < array.length; i++) {
+        if (block.call(thisp, array[i])) {
+            values.push(array[i]);
+        }
+    }
+    return values;
+};
+Ecma5.reduce = function(array, fun /*, initial*/) {
+    var len = array.length >>> 0;
+    var i = 0;
+
+    // no value to return if no initial value and an empty array
+    if (len === 0 && arguments.length === 2) throw new TypeError();
+
+    if (arguments.length >= 3) {
+        var rv = arguments[2];
+    } else {
+        do {
+            if (i in array) {
+                rv = array[i++];
+                break;
             }
+            // if array contains no values, no initial value to return
+            if (++i >= len) throw new TypeError();
+        } while (true);
+    }
+    for (; i < len; i++) {
+        if (i in array) {
+            rv = fun.call(null, rv, array[i], i, array);
         }
-    };
-}
-if (!Array.prototype.map) {
-    Array.prototype.map = function(fun /*, thisp*/) {
-        var len = this.length >>> 0;
-        var res = new Array(len);
-        var thisp = arguments[1];
+    }
+    return rv;
+};
+Ecma5.indexOf = function(array, value /*, fromIndex */ ) {
+    var length = array.length;
+    var i = arguments[2] || 0;
 
-        for (var i = 0; i < len; i++) {
-            if (i in this) {
-                res[i] = fun.call(thisp, this[i], i, this);
-            }
-        }
-        return res;
-    };
-}
-if (!Array.prototype.filter) {
-    Array.prototype.filter = function (block /*, thisp */) {
-        var values = [];
-        var thisp = arguments[1];
-        for (var i = 0; i < this.length; i++) {
-            if (block.call(thisp, this[i])) {
-                values.push(this[i]);
-            }
-        }
-        return values;
-    };
-}
-if (!Array.prototype.reduce) {
-    Array.prototype.reduce = function(fun /*, initial*/) {
-        var len = this.length >>> 0;
-        var i = 0;
+    if (!length)     return -1;
+    if (i >= length) return -1;
+    if (i < 0)       i += length;
 
-        // no value to return if no initial value and an empty array
-        if (len === 0 && arguments.length === 1) throw new TypeError();
-
-        if (arguments.length >= 2) {
-            var rv = arguments[1];
-        } else {
-            do {
-                if (i in this) {
-                    rv = this[i++];
-                    break;
-                }
-                // if array contains no values, no initial value to return
-                if (++i >= len) throw new TypeError();
-            } while (true);
-        }
-        for (; i < len; i++) {
-            if (i in this) {
-                rv = fun.call(null, rv, this[i], i, this);
-            }
-        }
-        return rv;
-    };
-}
-if (!Array.prototype.indexOf) {
-    Array.prototype.indexOf = function (value /*, fromIndex */ ) {
-        var length = this.length;
-        var i = arguments[1] || 0;
-
-        if (!length)     return -1;
-        if (i >= length) return -1;
-        if (i < 0)       i += length;
-
-        for (; i < length; i++) {
-            if (!Object.prototype.hasOwnProperty.call(this, i)) { continue }
-            if (value === this[i]) return i;
-        }
-        return -1;
-    };
-}
+    for (; i < length; i++) {
+        if (!Object.prototype.hasOwnProperty.call(array, i)) { continue }
+        if (value === array[i]) return i;
+    }
+    return -1;
+};
 
 //
 // Object
 //
-if (!Object.keys) {
-    Object.keys = function (object) {
-        var keys = [];
-        for (var name in object) {
-            if (Object.prototype.hasOwnProperty.call(object, name)) {
-                keys.push(name);
-            }
+Ecma5.keys = function (object) {
+    var keys = [];
+    for (var name in object) {
+        if (Object.prototype.hasOwnProperty.call(object, name)) {
+            keys.push(name);
         }
-        return keys;
-    };
-}
+    }
+    return keys;
+};
 
 //
 // String
 //
-if (!String.prototype.trim) {
-    String.prototype.trim = function () {
-        return String(this).replace(/^\s\s*/, '').replace(/\s\s*$/, '');
-    };
-}
+Ecma5.trim = function (string) {
+    return string.replace(/^\s\s*/, '').replace(/\s\s*$/, '');
+};
+
 var less, tree;
 
 if (typeof(window) === 'undefined') {
@@ -205,7 +195,7 @@ less.Parser = function Parser(env) {
             // Import a file asynchronously
             //
             less.Parser.importer(path, this.paths, function (root) {
-                that.queue.splice(that.queue.indexOf(path), 1); // Remove the path from the queue
+                that.queue.splice(Ecma5.indexOf(that.queue, path), 1); // Remove the path from the queue
                 that.files[path] = root;                        // Store the root
 
                 callback(root);
@@ -390,7 +380,7 @@ less.Parser = function Parser(env) {
                     };
                 }
 
-                return chunks.map(function (c) { return c.join('') });;
+                return Ecma5.map(chunks, function (c) { return c.join('') });;
             })([[]]);
 
             // Start with the primary rule.
@@ -420,8 +410,8 @@ less.Parser = function Parser(env) {
                     //     ])
                     //   )
                     //
-                    if (typeof(variables) === 'object' && !Array.isArray(variables)) {
-                        variables = Object.keys(variables).map(function (k) {
+                    if (typeof(variables) === 'object' && Ecma5.isArray(variables)) {
+                        variables = Ecma5.map(Ecma5.keys(variables), function (k) {
                             var value = variables[k];
 
                             if (! (value instanceof tree.Value)) {
@@ -1064,7 +1054,7 @@ less.Parser = function Parser(env) {
                 if (value = $(this['import'])) {
                     return value;
                 } else if (name = $(/^@media|@page/)) {
-                    types = $(/^[^{]+/).trim();
+                    types = Ecma5.trim($(/^[^{]+/));
                     if (rules = $(this.block)) {
                         return new(tree.Directive)(name + " " + types, rules);
                     }
@@ -1207,7 +1197,7 @@ tree.functions = {
         return this.rgba(r, g, b, 1.0);
     },
     rgba: function (r, g, b, a) {
-        var rgb = [r, g, b].map(function (c) { return number(c) }),
+        var rgb = Ecma5.map([r, g, b], function (c) { return number(c) }),
             a = number(a);
         return new(tree.Color)(rgb, a);
     },
@@ -1373,13 +1363,13 @@ tree.Call.prototype = {
     // The function should receive the value, not the variable.
     //
     eval: function (env) {
-        var args = this.args.map(function (a) { return a.eval(env) });
+        var args = Ecma5.map(this.args, function (a) { return a.eval(env) });
 
         if (this.name in tree.functions) { // 1.
             return tree.functions[this.name].apply(tree.functions, args);
         } else { // 2.
             return new(tree.Anonymous)(this.name +
-                   "(" + args.map(function (a) { return a.toCSS() }).join(', ') + ")");
+                   "(" + Ecma5.map(args, function (a) { return a.toCSS() }).join(', ') + ")");
         }
     },
 
@@ -1400,14 +1390,14 @@ tree.Color = function (rgb, a) {
     //
     // This facilitates operations and conversions.
     //
-    if (Array.isArray(rgb)) {
+    if (Ecma5.isArray(rgb)) {
         this.rgb = rgb;
     } else if (rgb.length == 6) {
-        this.rgb = rgb.match(/.{2}/g).map(function (c) {
+        this.rgb = Ecma5.map(rgb.match(/.{2}/g), function (c) {
             return parseInt(c, 16);
         });
     } else {
-        this.rgb = rgb.split('').map(function (c) {
+        this.rgb = Ecma5.map(rgb.split(''), function (c) {
             return parseInt(c + c, 16);
         });
     }
@@ -1424,11 +1414,11 @@ tree.Color.prototype = {
     //
     toCSS: function () {
         if (this.alpha < 1.0) {
-            return "rgba(" + this.rgb.map(function (c) {
+            return "rgba(" + Ecma5.map(this.rgb, function (c) {
                 return Math.round(c);
             }).concat(this.alpha).join(', ') + ")";
         } else {
-            return '#' + this.rgb.map(function (i) {
+            return '#' + Ecma5.map(this.rgb, function (i) {
                 i = Math.round(i);
                 i = (i > 255 ? 255 : (i < 0 ? 0 : i)).toString(16);
                 return i.length === 1 ? '0' + i : i;
@@ -1534,7 +1524,7 @@ tree.Dimension.prototype = {
 
 tree.Directive = function (name, value) {
     this.name = name;
-    if (Array.isArray(value)) {
+    if (Ecma5.isArray(value)) {
         this.ruleset = new(tree.Ruleset)([], value);
     } else {
         this.value = value;
@@ -1568,7 +1558,7 @@ tree.Directive.prototype = {
 tree.Element = function (combinator, value) {
     this.combinator = combinator instanceof tree.Combinator ?
                       combinator : new(tree.Combinator)(combinator);
-    this.value = value.trim();
+    this.value = Ecma5.trim(value);
 };
 tree.Element.prototype.toCSS = function (env) {
     return this.combinator.toCSS(env || {}) + this.value;
@@ -1578,7 +1568,7 @@ tree.Combinator = function (value) {
     if (value === ' ') {
         this.value = ' ';
     } else {
-        this.value = value ? value.trim() : "";
+        this.value = value ? Ecma5.trim(value) : "";
     }
 };
 tree.Combinator.prototype.toCSS = function (env) {
@@ -1601,7 +1591,7 @@ tree.Expression = function (value) { this.value = value };
 tree.Expression.prototype = {
     eval: function (env) {
         if (this.value.length > 1) {
-            return new(tree.Expression)(this.value.map(function (e) {
+            return new(tree.Expression)(Ecma5.map(this.value, function (e) {
                 return e.eval(env);
             }));
         } else {
@@ -1609,7 +1599,7 @@ tree.Expression.prototype = {
         }
     },
     toCSS: function (env) {
-        return this.value.map(function (e) {
+        return Ecma5.map(this.value, function (e) {
             return e.toCSS(env);
         }).join(' ');
     }
@@ -1767,15 +1757,15 @@ tree.mixin.Call.prototype = {
                     return rules;
                 } else {
                     throw { message: 'No matching definition was found for `' +
-                                      this.selector.toCSS().trim() + '('      +
-                                      this.arguments.map(function (a) {
+                                      Ecma5.trim(this.selector.toCSS()) + '('      +
+                                      Ecma5.map(this.arguments, function (a) {
                                           return a.toCSS();
                                       }).join(', ') + ")`",
                             index:   this.index };
                 }
             }
         }
-        throw { message: this.selector.toCSS().trim() + " is undefined",
+        throw { message: Ecma5.trim(this.selector.toCSS()) + " is undefined",
                 index: this.index };
     }
 };
@@ -1787,7 +1777,7 @@ tree.mixin.Definition = function (name, params, rules) {
     this.arity = params.length;
     this.rules = rules;
     this._lookups = {};
-    this.required = params.reduce(function (count, p) {
+    this.required = Ecma5.reduce(params, function (count, p) {
         if (p.name && !p.value) { return count + 1 }
         else                    { return count }
     }, 0);
@@ -1840,7 +1830,7 @@ tree.mixin.Definition.prototype = {
 (function (tree) {
 
 tree.Operation = function (op, operands) {
-    this.op = op.trim();
+    this.op = Ecma5.trim(op);
     this.operands = operands;
 };
 tree.Operation.prototype.eval = function (env) {
@@ -1890,7 +1880,7 @@ tree.Quoted.prototype = {
 tree.Rule = function (name, value, important, index) {
     this.name = name;
     this.value = (value instanceof tree.Value) ? value : new(tree.Value)([value]);
-    this.important = important ? ' ' + important.trim() : '';
+    this.important = important ? ' ' + Ecma5.trim(important) : '';
     this.index = index;
 
     if (name.charAt(0) === '@') {
@@ -1985,7 +1975,7 @@ tree.Ruleset.prototype = {
     variables: function () {
         if (this._variables) { return this._variables }
         else {
-            return this._variables = this.rules.reduce(function (hash, r) {
+            return this._variables = Ecma5.reduce(this.rules, function (hash, r) {
                 if (r instanceof tree.Rule && r.variable === true) {
                     hash[r.name] = r;
                 }
@@ -1999,7 +1989,7 @@ tree.Ruleset.prototype = {
     rulesets: function () {
         if (this._rulesets) { return this._rulesets }
         else {
-            return this._rulesets = this.rules.filter(function (r) {
+            return this._rulesets = Ecma5.filter(this.rules, function (r) {
                 return (r instanceof tree.Ruleset) || (r instanceof tree.mixin.Definition);
             });
         }
@@ -2011,7 +2001,7 @@ tree.Ruleset.prototype = {
 
         if (key in this._lookups) { return this._lookups[key] }
 
-        this.rulesets().forEach(function (rule) {
+        Ecma5.forEach(this.rulesets(), function (rule) {
             if (rule !== self) {
                 for (var j = 0; j < rule.selectors.length; j++) {
                     if (match = selector.match(rule.selectors[j])) {
@@ -2043,7 +2033,7 @@ tree.Ruleset.prototype = {
 
         if (! this.root) {
             if (context.length === 0) {
-                paths = this.selectors.map(function (s) { return [s] });
+                paths = Ecma5.map(this.selectors, function (s) { return [s] });
             } else {
                 for (var s = 0; s < this.selectors.length; s++) {
                     for (var c = 0; c < context.length; c++) {
@@ -2085,10 +2075,10 @@ tree.Ruleset.prototype = {
             css.push(rules.join(env.compress ? '' : '\n'));
         } else {
             if (rules.length > 0) {
-                selector = paths.map(function (p) {
-                    return p.map(function (s) {
+                selector = Ecma5.map(paths, function (p) {
+                    return Ecma5.trim(Ecma5.map(p, function (s) {
                         return s.toCSS(env);
-                    }).join('').trim();
+                    }).join(''));
                 }).join(env.compress ? ',' : (paths.length > 3 ? ',\n' : ', '));
                 css.push(selector,
                         (env.compress ? '{' : ' {\n  ') +
@@ -2120,9 +2110,9 @@ tree.Selector.prototype.match = function (other) {
 tree.Selector.prototype.toCSS = function (env) {
     if (this._css) { return this._css }
 
-    return this._css = this.elements.map(function (e) {
+    return this._css = Ecma5.map(this.elements, function (e) {
         if (typeof(e) === 'string') {
-            return ' ' + e.trim();
+            return ' ' + Ecma5.trim(e);
         } else {
             return e.toCSS(env);
         }
@@ -2161,13 +2151,13 @@ tree.Value.prototype = {
         if (this.value.length === 1) {
             return this.value[0].eval(env);
         } else {
-            return new(tree.Value)(this.value.map(function (v) {
+            return new(tree.Value)(Ecma5.map(this.value, function (v) {
                 return v.eval(env);
             }));
         }
     },
     toCSS: function (env) {
-        return this.value.map(function (e) {
+        return Ecma5.map(this.value, function (e) {
             return e.toCSS(env);
         }).join(env.compress ? ',' : ', ');
     }
